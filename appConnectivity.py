@@ -26,6 +26,7 @@ async def updateValue(period):
 async def main():
 	loop = asyncio.get_running_loop()
 	deviceInit(loop)
+	print('About to create task reading holding register')
 	loop.create_task(functools.partial(updateValue, 1))
 
 if __name__ == '__main__':
