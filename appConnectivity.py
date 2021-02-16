@@ -17,7 +17,9 @@ def callRedisClient():
 
 async def updateValue(period):
 	global mb1
+    print('About to update Value')
 	while True:
+        print('About to read holding register...')
 		mb1.read_holding_Reg(100, 2, callRedisClient)
 		await asyncio.sleep(1)
 
