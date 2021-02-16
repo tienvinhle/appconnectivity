@@ -7,7 +7,7 @@ class ModbusDevice:
 	def __init__(self, ip, port, offset, eventloop):
 		self._ip = ip
 		self._port = port
-        self._offset = offset
+		self._offset = offset
 		self._loop, self._conn = ModbusClient.(schedulers.ASYNC_IO, port=port, loop=eventloop)
 	
 	def read_holding_Reg(self, startAddr, noRegister, callback):
@@ -16,4 +16,4 @@ class ModbusDevice:
 
 	async def read_holding_registers(self, startAddr, noRegister):
 		for reg in (await self._conn.protocol.read_holding_registers(startAddr, noRegister, self._offset)):
-            print('Value= ', reg)
+			print('Value= ', reg)
