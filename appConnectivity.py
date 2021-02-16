@@ -7,7 +7,7 @@ OFFSET = 0x01
 
 def deviceInit(eventloop):
 	global mb1
-	mb1 = ModbusDevice('192.168.0.106', 8080, OFFSET,eventloop)
+	mb1 = ModbusDevice('172.17.57.17', 8080, OFFSET,eventloop)
 	print('devices have been created successfully')
 
 def callRedisClient():
