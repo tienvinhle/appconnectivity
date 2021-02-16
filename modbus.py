@@ -9,16 +9,15 @@ class ModbusDevice:
 		self._port = port
 		self._offset = offset
 		self._eventLoop = eventloop
-		self._loop = None
 		self._conn = None		
 
 	def connect(self):
 		print('Start to init ModbusDevice: ', self._ip, self._port, self._offset)
-		if self._loop.is_running():
+		if self._eventLoop.is_running():
 			print('The event loop is running')
 		else:
 			print('The event loop is stopped')
-		self._loop, self._conn = ModbusClient(schedulers.ASYNC_IO, ip=self._ip, port=self._port, loop=self._eventLoop)
+		loop, self._conn = ModbusClient(schedulers.ASYNC_IO, ip=self._ip, port=self._port, loop=self._eventLoop)
 
 	def read_holding_Reg(self, startAddr, noRegister, callback):
 		task= self._loop.create_task(functools.partial(self.read_holding_registers, startAddr, noRegister))
