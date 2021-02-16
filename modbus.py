@@ -18,6 +18,7 @@ class ModbusDevice:
 		else:
 			print('The event loop is stopped')
 		loop, self._conn = ModbusClient(schedulers.ASYNC_IO, ip=self._ip, port=self._port, loop=self._eventLoop)
+		print('Connect completed')
 
 	def read_holding_Reg(self, startAddr, noRegister, callback):
 		task= self._loop.create_task(functools.partial(self.read_holding_registers, startAddr, noRegister))
