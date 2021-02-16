@@ -96,7 +96,7 @@ def beginAsynchronousTest(client, protocol):
 
 
 def err(*args, **kwargs):
-    log.error("Err", args, kwargs)
+    print("Err", args, kwargs)
 
 
 def callback(protocol, future):
@@ -110,5 +110,5 @@ def callback(protocol, future):
 
 
 if __name__ == "__main__":
-    protocol, future = ModbusClient(schedulers.IO_LOOP, ip='192.168.0.106', port=8080)
+    protocol, future = ModbusClient(schedulers.IO_LOOP, port=8080)
     future.add_done_callback(functools.partial(callback, protocol))

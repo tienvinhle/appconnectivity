@@ -2,7 +2,6 @@ import asyncio
 import functools
 from pymodbus.client.asynchronous.tcp import AsyncModbusTCPClient as ModbusClient
 from pymodbus.client.asynchronous import schedulers
-from pymodbus.constants import Defaults
 
 class ModbusDevice:
 	def __init__(self, ip, port, offset, eventloop):
@@ -11,7 +10,6 @@ class ModbusDevice:
 		self._offset = offset
 		self._eventLoop = eventloop
 		self._conn = None
-		Defaults.Timeout = 5	
 
 	def connect(self):
 		print('Start to init ModbusDevice: ', self._ip, self._port, self._offset)
@@ -19,7 +17,7 @@ class ModbusDevice:
 			print('The event loop is running')
 		else:
 			print('The event loop is stopped')
-		loop, self._conn = ModbusClient(schedulers.ASYNC_IO, ip=self._ip, port=self._port, loop=self._eventLoop)
+		loop, self._conn = ModbusClient(schedulers.ASYNC_IO, host=self._ip, port=self._port, loop=self._eventLoop)
 		print('Connect completed')
 
 	def read_holding_Reg(self, startAddr, noRegister, callback):
