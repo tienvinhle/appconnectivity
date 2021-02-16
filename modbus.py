@@ -17,7 +17,6 @@ class ModbusDevice:
 		print('Start to init ModbusDevice: ', self._ip, self._port, self._offset)
 		if self._eventLoop.is_running():
 			print('The event loop is running')
-			asyncio.set_event_loop(self._eventLoop)
 		else:
 			print('The event loop is stopped')
 		loop, self._conn = ModbusClient(schedulers.ASYNC_IO, ip=self._ip, port=self._port, loop=self._eventLoop)
