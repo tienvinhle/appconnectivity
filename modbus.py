@@ -2,6 +2,7 @@ import asyncio
 import functools
 from pymodbus.client.asynchronous.tcp import AsyncModbusTCPClient as ModbusClient
 from pymodbus.client.asynchronous import schedulers
+from pymodbus.constants import Defaults
 
 class ModbusDevice:
 	def __init__(self, ip, port, offset, eventloop):
@@ -9,7 +10,8 @@ class ModbusDevice:
 		self._port = port
 		self._offset = offset
 		self._eventLoop = eventloop
-		self._conn = None		
+		self._conn = None
+		Defaults.Timeout = 5	
 
 	def connect(self):
 		print('Start to init ModbusDevice: ', self._ip, self._port, self._offset)
