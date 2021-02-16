@@ -8,7 +8,7 @@ class ModbusDevice:
 		self._ip = ip
 		self._port = port
 		self._offset = offset
-		print('Start to init Object')
+		print('Start to init ModbusDevice IP: {} port:{} offset:{} ', ip, port, offset)
 		self._loop, self._conn = ModbusClient(schedulers.ASYNC_IO, ip=ip, port=port, loop=eventloop)
 	
 	def read_holding_Reg(self, startAddr, noRegister, callback):
