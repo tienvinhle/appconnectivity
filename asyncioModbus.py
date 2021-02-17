@@ -42,7 +42,7 @@ log.setLevel(logging.DEBUG)
 # --------------------------------------------------------------------------- #
 
 
-UNIT = 0x00
+UNIT = 0xFF
 
 
 async def start_async_test(client):
@@ -103,7 +103,7 @@ def run_with_already_running_loop():
     t.start()
     assert loop.is_running()
     asyncio.set_event_loop(loop)
-    loop, client = ModbusClient(schedulers.ASYNC_IO, port=5020, loop=loop)
+    loop, client = ModbusClient(schedulers.ASYNC_IO, host="115.78.6.251", port=5589, loop=loop)
     future = asyncio.run_coroutine_threadsafe(
         start_async_test(client.protocol), loop=loop)
     future.add_done_callback(done)
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     # Run with No loop
     log.debug("Running Async client")
     log.debug("------------------------------------------------------")
-    run_with_no_loop()
+    run_with_already_running_loop()
 
     # Run with loop not yet started
     # run_with_not_running_loop()
