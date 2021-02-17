@@ -58,7 +58,6 @@ async def start_async_test(client):
     rq = await client.write_register(100, 10, unit=UNIT)
     rr = await client.read_holding_registers(100, 1, unit=UNIT)
     assert(rq.function_code < 0x80)     # test that we are not an error
-    assert(rr.registers[0] == 10)       # test the expected value
 
 def run_with_not_running_loop():
     """
