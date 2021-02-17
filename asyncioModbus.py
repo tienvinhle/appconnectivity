@@ -1,28 +1,11 @@
-#!/usr/bin/env python
-"""
-Pymodbus Asynchronous Client Examples
---------------------------------------------------------------------------
-The following is an example of how to use the asynchronous modbus
-client implementation from pymodbus with ayncio.
-The example is only valid on Python3.4 and above
-"""
-from pymodbus.compat import IS_PYTHON3, PYTHON_VERSION
-if IS_PYTHON3 and PYTHON_VERSION >= (3, 4):
-    import asyncio
-    import logging
-    # ----------------------------------------------------------------------- #
-    # Import the required asynchronous client
-    # ----------------------------------------------------------------------- #
-    from pymodbus.client.asynchronous.tcp import AsyncModbusTCPClient as ModbusClient
-    # from pymodbus.client.asynchronous.udp import (
-    #     AsyncModbusUDPClient as ModbusClient)
-    from pymodbus.client.asynchronous import schedulers
-
-else:
-    import sys
-    sys.stderr("This example needs to be run only on python 3.4 and above")
-    sys.exit(1)
-
+import asyncio
+import logging
+from queueHandler import Message
+# ----------------------------------------------------------------------- #
+# Import the required asynchronous client
+# ----------------------------------------------------------------------- #
+from pymodbus.client.asynchronous.tcp import AsyncModbusTCPClient as ModbusClient
+from pymodbus.client.asynchronous import schedulers
 from threading import Thread
 import time
 # --------------------------------------------------------------------------- #
@@ -100,8 +83,10 @@ if __name__ == '__main__':
     # Start the loop
     t.start()
     assert loop.is_running()
-    asyncio.set_event_loop(loop)
-
+    asyncio.set_event_loop(loop)    
+    msg = Message('127.0.0.1', 6379)
+    await loop.create_task(msg.connect_to_redis())
+    print('Connect to Redis successfully')
     startModbus(loop)
 
     # Run with loop not yet started
