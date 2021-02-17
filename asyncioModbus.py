@@ -84,8 +84,8 @@ if __name__ == '__main__':
     t.start()
     assert loop.is_running()
     asyncio.set_event_loop(loop)    
-    msg = Message('127.0.0.1', 6379)
-    await loop.create_task(msg.connect_to_redis())
+    msg = Message('172.17.0.3', 6379)
+    loop.create_task(msg.connect_to_redis())
     print('Connect to Redis successfully')
     startModbus(loop)
 
