@@ -42,7 +42,7 @@ log.setLevel(logging.DEBUG)
 # --------------------------------------------------------------------------- #
 
 
-UNIT = 0x01
+UNIT = 0x00
 
 
 async def start_async_test(client):
@@ -121,7 +121,7 @@ def run_with_no_loop():
     :return:
     """
     log.debug("---------------------RUN_WITH_NO_LOOP-----------------")
-    loop, client = ModbusClient(schedulers.ASYNC_IO, host="115.78.6.251" port=5589)
+    loop, client = ModbusClient(schedulers.ASYNC_IO, host="115.78.6.251", port=5589)
     loop.run_until_complete(start_async_test(client.protocol))
     loop.close()
     log.debug("--------DONE RUN_WITH_NO_LOOP-------------")
