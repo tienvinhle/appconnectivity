@@ -8,7 +8,7 @@ OFFSET = 0x01
 def deviceInit(eventloop):
 	global mb1
 	print('Create devices ...')
-	mb1 = ModbusDevice('192.168.0.106', 8080, OFFSET,eventloop)
+	mb1 = ModbusDevice("115.78.6.251", 5589, OFFSET,eventloop)
 	print('Connecting devices ...')
 	mb1.connect()
 
