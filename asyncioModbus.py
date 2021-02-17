@@ -42,7 +42,7 @@ log.setLevel(logging.DEBUG)
 # --------------------------------------------------------------------------- #
 
 
-UNIT = 0xFF
+UNIT = 0x00
 
 
 async def start_async_test(client):
@@ -59,24 +59,7 @@ async def start_async_test(client):
     rr = await client.read_holding_registers(100, 1, unit=UNIT)
     assert(rq.function_code < 0x80)     # test that we are not an error
 
-def run_with_not_running_loop():
-    """
-    A loop is created and is passed to ModbusClient factory to be used.
-    :return:
-    """
-    log.debug("Running Async client with asyncio loop not yet started")
-    log.debug("------------------------------------------------------")
-    loop = asyncio.new_event_loop()
-    assert not loop.is_running()
-    asyncio.set_event_loop(loop)
-    new_loop, client = ModbusClient(schedulers.ASYNC_IO, port=5020, loop=loop)
-    loop.run_until_complete(start_async_test(client.protocol))
-    loop.close()
-    log.debug("--------------RUN_WITH_NOT_RUNNING_LOOP---------------")
-    log.debug("")
-
-
-def run_with_already_running_loop():
+def startModbus(loop):
     """
     An already running loop is passed to ModbusClient Factory
     :return:
@@ -85,7 +68,22 @@ def run_with_already_running_loop():
     log.debug("------------------------------------------------------")
 
     def done(future):
-        log.info("Done !!!")
+        log.info("Done Writing and Reading!!!")
+
+    loop, client = ModbusClient(schedulers.ASYNC_IO, host="115.78.6.251", port=5589, loop=loop)
+    future = asyncio.run_coroutine_threadsafe(
+        start_async_test(client.protocol), loop=loop)
+    future.add_done_callback(done)
+    while not future.done():
+        time.sleep(0.1)
+    loop.stop()
+    log.debug("--------DONE RUN_WITH_ALREADY_RUNNING_LOOP-------------")
+    log.debug("")
+
+if __name__ == '__main__':
+    # Run with No loop
+    log.debug("Running Async client")
+    log.debug("------------------------------------------------------")
 
     def start_loop(loop):
         """
@@ -103,35 +101,8 @@ def run_with_already_running_loop():
     t.start()
     assert loop.is_running()
     asyncio.set_event_loop(loop)
-    loop, client = ModbusClient(schedulers.ASYNC_IO, host="115.78.6.251", port=5589, loop=loop)
-    future = asyncio.run_coroutine_threadsafe(
-        start_async_test(client.protocol), loop=loop)
-    future.add_done_callback(done)
-    while not future.done():
-        time.sleep(0.1)
-    loop.stop()
-    log.debug("--------DONE RUN_WITH_ALREADY_RUNNING_LOOP-------------")
-    log.debug("")
 
-
-def run_with_no_loop():
-    """
-    ModbusClient Factory creates a loop.
-    :return:
-    """
-    log.debug("---------------------RUN_WITH_NO_LOOP-----------------")
-    loop, client = ModbusClient(schedulers.ASYNC_IO, host="115.78.6.251", port=5589)
-    loop.run_until_complete(start_async_test(client.protocol))
-    loop.close()
-    log.debug("--------DONE RUN_WITH_NO_LOOP-------------")
-    log.debug("")
-
-
-if __name__ == '__main__':
-    # Run with No loop
-    log.debug("Running Async client")
-    log.debug("------------------------------------------------------")
-    run_with_already_running_loop()
+    startModbus(loop)
 
     # Run with loop not yet started
     # run_with_not_running_loop()
