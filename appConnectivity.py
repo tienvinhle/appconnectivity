@@ -6,6 +6,7 @@ import threading
 import functools
 import json
 from collections import OrderedDict
+import datetime
 
 mbD = []
 configPath = "/etc/modbus/deviceConfig.conf"
@@ -46,6 +47,7 @@ async def on_msg_queue(queue):
 		# Notify the queue that the "work item" has been processed.
 		queue.task_done()
 		#print('Send to Redis value {} in {}'.format(data, threading.current_thread().name))
+		data["timeStamp"] = str(datetime.datetime.now())
 		dataString = json.dumps(data)
 		await msg.send_message('data/inverterA/atmosphere1', dataString)
 
