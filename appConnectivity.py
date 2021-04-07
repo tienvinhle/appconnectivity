@@ -12,6 +12,7 @@ configPath = "/etc/modbus/deviceConfig.conf"
 msg = None
 
 def deviceInit(eventloop, sharedQueue):
+	global msg
 	def start_loop(device):
 		print('Connecting device ... from thread: ', d._ip, threading.current_thread().name)
 		device.start(on_read_register)
