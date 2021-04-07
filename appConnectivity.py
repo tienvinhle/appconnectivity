@@ -47,7 +47,7 @@ async def on_msg_queue(queue):
 		queue.task_done()
 		#print('Send to Redis value {} in {}'.format(data, threading.current_thread().name))
 		dataString = json.dumps(data)
-		await msg.send_message('mqtt', dataString)
+		await msg.send_message('connectivity', dataString)
 
 async def send2Redis(reg):
 	await asyncio.sleep(1)
