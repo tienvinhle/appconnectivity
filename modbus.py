@@ -4,13 +4,23 @@ import threading
 import time
 from pymodbus.client.asynchronous.tcp import AsyncModbusTCPClient as ModbusClient
 from pymodbus.client.asynchronous import schedulers
+from pymodbus.payload import BinaryPayloadDecoder
+from pymodbus.constants import Endian
 import json
+from collections import OrderedDict
+import datetime
+
+defaulOrder = Endian.Little
 
 class ModbusDevice:
-	def __init__(self, config, sharedQueue, loopMainThread):
+	def __init__(self, thingID, config, sharedQueue, loopMainThread):
+		self._thingID = thingID
 		self._ip = config["ip"]
 		self._port = config["port"]
 		self._unitID = config["unitID"]
+		self._wordOrder = get_data_format(config["dataFormat"]["wordOrder"])
+		self._byteOrder = get_data_format(config["dataFormat"]["byteOrder"])
+		self._supportedTypes = config["dataFormat"]["supportedTypes"]
 		self._eventLoopLocal = None
 		self._evetLoopMainThread = loopMainThread
 		self._conn = None
@@ -22,6 +32,16 @@ class ModbusDevice:
 		self._taskDict = config["tasks"]
 		self._tasks = {}
 		self._tryingconnect = False
+	
+	def get_data_format(self, stringType):
+		returnedValue = None
+		if (stringType== "Endian.Little"):
+			returnedValue = Endian.Little
+		elif (stringType== "Endian.Big"):
+			returnedValue = Endian.Big
+		else:
+			returnedValue = defaulOrder
+		return returnedValue
 
 	def start(self, on_task_finsih_callback):
 		self._on_task_finsih_callback = on_task_finsih_callback
@@ -200,11 +220,56 @@ class ModbusDevice:
 							value = []
 							for reg in task["tags"]:
 								for pos in reg["positions"]:
-									value.append({startAddress+pos :responseSet[pos]})
-								responseTags[reg["tagName"]] = value
+									value.insert(0, responseSet[pos]) #insert to the begining of the list to keep the most significant always at the begining
+								#	value.append({startAddress+pos :responseSet[pos]})
+								# ===== added =====
+								data = {}
+								data["value"] = self.decodeValue(value, reg["dataType"])
+								data["unit"] = reg["unit"]
+								data["timeStamp"] = str(datetime.datetime.now())
+								data["dataType"] = reg["dataType"]
+								responseTags["thingID"] = self._thingID
+								responseTags["datapoint"] = reg["tagName"]
+								responseTags["datavalue"] = data
+								# =================
+								#responseTags[reg["tagName"]] = value
 								#quit for loop once hit the target
 								break
 			return 	responseTags
 		else:
 			print('response contains no components!')
-			return None							
+			return None
+	
+	def decodeValue(self, registers, typeString):
+		decoder = BinaryPayloadDecoder.fromRegisters(registers, byteorder=self._byteOrder, wordorder=self._wordOrder)
+		value = None
+		if (typeString in self._supportedTypes):
+			if (typeString == "bits"):
+				value = decoder.decode_bits()
+			elif (typeString == "int8"):
+				value = decoder.decode_8bit_int()
+			elif (typeString == "uint8"):
+				value = decoder.decode_8bit_uint()
+			elif (typeString == "int16"):
+				value = decoder.decode_16bit_int()
+			elif (typeString == "uint16"):
+				value = decoder.decode_16bit_uint()
+			elif (typeString == "int32"):
+				value = decoder.decode_32bit_int()
+			elif (typeString == "uint32"):
+				value = decoder.decode_32bit_uint()
+			elif (typeString == "float16"):
+				value = decoder.decode_16bit_float()
+			elif (typeString == "float32"):
+				value = decoder.decode_32bit_float()
+			elif (typeString == "int64"):
+				value = decoder.decode_64bit_int()
+			elif (typeString == "uint64"):
+				value = decoder.decode_64bit_uint()
+			elif (typeString == "float64"):
+				value = decoder.decode_64bit_float()
+			else:
+				value = "Invalid type"
+		else:
+			value = "Not supported type"
+		return value

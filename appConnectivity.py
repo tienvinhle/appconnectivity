@@ -26,9 +26,9 @@ def deviceInit(eventloop, sharedQueue):
 	conf = getConfig(configPath)
 	msgConf = conf.get("message")
 	msg = Message(msgConf["ip"], msgConf["port"])
-	for mb in conf.get("modbustcp").values():
-		mbD.append(ModbusDevice(mb, sharedQueue, eventloop))		
-		print('Device was created: ', mb.get("ip"), mb.get("port"), mb.get("unitID"))
+	for (thingID, mbConf) in conf.get("modbustcp").items():
+		mbD.append(ModbusDevice(thinggID, mbConf, sharedQueue, eventloop))		
+		print('Device was created: ', mbConf.get("ip"), mbConf.get("port"), mbConf.get("unitID"))
 	for d in mbD:
 		t = Thread(target=start_loop, args=[d])
 		t.daemon = True
@@ -47,9 +47,10 @@ async def on_msg_queue(queue):
 		# Notify the queue that the "work item" has been processed.
 		queue.task_done()
 		#print('Send to Redis value {} in {}'.format(data, threading.current_thread().name))
-		data["timeStamp"] = str(datetime.datetime.now())
-		dataString = json.dumps(data)
-		await msg.send_message('data/inverterA/atmosphere1', dataString)
+		#data["timeStamp"] = str(datetime.datetime.now())
+		topic = 'data/' + data["thingID"] + '/' + data["datapoint"]
+		dataString = json.dumps(data["datavalue"])
+		await msg.send_message(topic, dataString)
 
 async def send2Redis(reg):
 	await asyncio.sleep(1)
