@@ -18,8 +18,8 @@ class ModbusDevice:
 		self._ip = config["ip"]
 		self._port = config["port"]
 		self._unitID = config["unitID"]
-		self._wordOrder = get_data_format(config["dataFormat"]["wordOrder"])
-		self._byteOrder = get_data_format(config["dataFormat"]["byteOrder"])
+		self._wordOrder = self.get_data_format(config["dataFormat"]["wordOrder"])
+		self._byteOrder = self.get_data_format(config["dataFormat"]["byteOrder"])
 		self._supportedTypes = config["dataFormat"]["supportedTypes"]
 		self._eventLoopLocal = None
 		self._evetLoopMainThread = loopMainThread
