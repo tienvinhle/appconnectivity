@@ -60,6 +60,7 @@ class ModbusDevice:
 	
 	def finalizeTask(self):
 		def tasksForTaskName(taskSet):
+			print('TaskSet recieved {}', len(taskSet))
 			if taskSet is None:
 				return None
 			else:
@@ -94,6 +95,7 @@ class ModbusDevice:
 							tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": nPos}]
 							tempRec.pop("tagName")
 							tempTaskSet.append(tempRec)
+					print('Tasks after processing {}', len(tempTaskSet))
 				return tempTaskSet
 
 		#shorten the given list
@@ -114,7 +116,7 @@ class ModbusDevice:
 					tempTasks = tasksForTaskName(tasks)
 					self._tasks[taskName].extend(tempTasks)
 					#self.createTask(taskName, cycle, tempTasks)
-		#print('Create tasks based on self._tasks:\r\n{}'.format(json.dumps(self._tasks, indent=4)))
+		print('Tasks will be created: {}',  len(self._tasks))
 		self.createTask(self._tasks)
 		asyncio.ensure_future(self.processRequestQueue(), loop=self._conn.loop)
 	
