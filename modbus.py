@@ -70,7 +70,7 @@ class ModbusDevice:
 				for x in range(0, tempRec["numberOfRegisters"]):
 					fpos.append(x)
 					lastPos = x
-				tempRec["tags"] = [{"tagName": tempRec["tagName"], "positions": fpos}]
+				tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": fpos}]
 				tempRec.pop("tagName")
 				tempTaskSet.append(tempRec)
 				if taskCount > 1:
@@ -83,7 +83,7 @@ class ModbusDevice:
 								pos.append(lastPos)
 								newNoRegs = tempTaskSet[-1]["numberOfRegisters"] + 1
 								tempTaskSet[-1]["numberOfRegisters"] = newNoRegs
-							tempTaskSet[-1]["tags"].append({"tagName": taskSet[i]["tagName"], "positions": pos})
+							tempTaskSet[-1]["tags"].append({"tagName": taskSet[i]["tagName"], "unit": taskSet[i]["unit"], "dataType": taskSet[i]["dataType"], "positions": pos})
 						#done the series of tasks
 						else:
 							nPos = []
@@ -91,7 +91,7 @@ class ModbusDevice:
 							for x in range(0, tempRec["numberOfRegisters"]):
 								nPos.append(x)
 								lastPos = x
-							tempRec["tags"] = [{"tagName": tempRec["tagName"], "positions": nPos}]
+							tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": nPos}]
 							tempRec.pop("tagName")
 							tempTaskSet.append(tempRec)
 				return tempTaskSet
