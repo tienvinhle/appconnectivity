@@ -24,7 +24,7 @@ def deviceInit(eventloop, sharedQueue):
 
 	print('Create devices ...')
 	conf = getConfig(configPath)
-	msgConf = conf.get("message")
+	msgConf = conf.get("micro")
 	msg = Message(msgConf["ip"], msgConf["port"])
 	for (thingID, mbConf) in conf.get("modbustcp").items():
 		mbD.append(ModbusDevice(thinggID, mbConf, sharedQueue, eventloop))		
