@@ -82,6 +82,7 @@ class ModbusDevice:
 						print('Loop at task [%s] value %s', i, taskSet[i])
 						noRegs = taskSet[i]["numberOfRegisters"]
 						if taskSet[i]["startAddress"] == (taskSet[i-1]["startAddress"] + taskSet[i-1]["numberOfRegisters"]):
+							print('This datapoint is nearby the previous one')
 							pos = []
 							for no in range(0, taskSet[i]["numberOfRegisters"]):
 								lastPos = lastPos +1
@@ -91,6 +92,7 @@ class ModbusDevice:
 							tempTaskSet[-1]["tags"].append({"tagName": taskSet[i]["tagName"], "unit": taskSet[i]["unit"], "dataType": taskSet[i]["dataType"], "positions": pos})
 						#done the series of tasks
 						else:
+							print('This datapoint is far away from the previous one')
 							nPos = []
 							tempRec = taskSet[i]
 							for x in range(0, tempRec["numberOfRegisters"]):
