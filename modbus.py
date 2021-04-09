@@ -74,7 +74,7 @@ class ModbusDevice:
 					lastPos = x
 				tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": fpos}]
 				tempRec.pop("tagName")
-				print ('1st line: ', tempRec)
+				print ('1st line: ', json.dumps(tempRec))
 				tempTaskSet.append(tempRec)
 				if taskCount > 1:
 					print('Enter taskCount > 1')
