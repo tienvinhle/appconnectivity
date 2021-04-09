@@ -60,8 +60,9 @@ class ModbusDevice:
 	
 	def finalizeTask(self):
 		def tasksForTaskName(taskSet):
-			print('TaskSet recieved {}', len(taskSet))
+			print('TaskSet recieved %s', len(taskSet))
 			if taskSet is None:
+				print('taskSet is None')
 				return None
 			else:
 				tempTaskSet = []
@@ -73,9 +74,12 @@ class ModbusDevice:
 					lastPos = x
 				tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": fpos}]
 				tempRec.pop("tagName")
+				print ('1st line: ', tempRec)
 				tempTaskSet.append(tempRec)
 				if taskCount > 1:
+					print('Enter taskCount > 1')
 					for i in range(1, taskCount):
+						print('Loop at task [%s] value %s', i, taskSet[i])
 						noRegs = taskSet[i]["numberOfRegisters"]
 						if taskSet[i]["startAddress"] == (taskSet[i-1]["startAddress"] + taskSet[i-1]["numberOfRegisters"]):
 							pos = []
