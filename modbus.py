@@ -123,6 +123,7 @@ class ModbusDevice:
 		creation_sequence = ['read_coils', 'read_registers', 'write_coils', 'write_registers']
 		for taskType in creation_sequence:
 			if (taskDictionary[taskType] is not None):
+				self.sort_task_by_offset(taskDictionary[taskType])
 				self.register_task(taskDictionary[taskType], taskType)
 		#start to execute registered tasks
 		asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
