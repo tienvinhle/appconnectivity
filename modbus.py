@@ -221,7 +221,7 @@ class ModbusDevice:
 				#decode value
 				decodedValue = self.value_decode(rawValue, dataType)
 				#prepare the frame to send
-				dataSend = {"value": decodedValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.now())}
+				dataSend = {"value": decodedValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
 				decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
 				decodedDatapointList.append(decodedDatapoint)
 		return decodedDatapointList
