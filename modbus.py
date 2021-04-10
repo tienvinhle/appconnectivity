@@ -181,6 +181,7 @@ class ModbusDevice:
 					#update the current task
 					taskList[i]["taskID"] = taskPosition
 					taskList[i]["dataPosition"] = 0
+					self._tasks[taskPosition]["TTL"] = taskPosition
 
 	async def task_executor(self, taskList):
 		#taskList is like [{"taskType": "read_registers", "offSet":116, "numberOfWords":4, "TTL":0},
