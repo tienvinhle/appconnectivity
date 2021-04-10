@@ -188,14 +188,14 @@ class ModbusDevice:
 		# 					{"taskType": "read_registers", "offSet":124, "numberOfWords":8, "TTL":1}]
 		#make it scan for task forever
 		while True:
-			if len(self._tasks) > 0:
+			if len(taskList) > 0:
 				#execute the top priority task which its TTL = 0
 				for i in range(0, len(taskList)):
 					if (taskList[i]["TTL"] == 0):
 						#re-assign the TTL to the based_TTL and plus 1 for later reduction
 						taskList[i]["TTL"] = self._cycleTTL +1
 						if taskList[i]["taskType"] == "read_registers":
-							asyncio.ensure_future(self.read_registers(self._tasks[0], i), loop=self._conn.loop)
+							asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
 					#as 1 cycle is passed, we reduce all TTL of the taskList
 					taskList[i]["TTL"] = taskList[i]["TTL"] -1
 			#wait for the next scanning cycle
