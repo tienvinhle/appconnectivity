@@ -49,7 +49,7 @@ async def on_msg_queue(queue):
 		#print('Send to Redis value {} in {}'.format(data, threading.current_thread().name))
 		#data["timeStamp"] = str(datetime.datetime.now())
 		topic = 'data/' + data["thingID"] + '/' + data["datapoint"]
-		dataString = json.dumps(data["datavalue"])
+		dataString = json.dumps(data["dataValue"])
 		await msg.send_message(topic, dataString)
 
 async def send2Redis(reg):

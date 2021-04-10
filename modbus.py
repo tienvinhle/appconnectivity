@@ -10,7 +10,22 @@ import json
 from collections import OrderedDict
 import datetime
 
-defaulOrder = Endian.Little
+defaultOrder = Endian.Little
+defaultNoWords = {
+	"bits":1,
+	"int8":1,
+	"uint8":1,
+	"int16":2,
+	"uint16":2,
+	"int32":4,
+	"uint32":4,
+	"int64":8,
+	"uint64":8,
+	"float16":2,
+	"float32":4,
+	"float64":8
+}
+
 
 class ModbusDevice:
 	def __init__(self, thingID, config, sharedQueue, loopMainThread):
@@ -18,19 +33,20 @@ class ModbusDevice:
 		self._ip = config["ip"]
 		self._port = config["port"]
 		self._unitID = config["unitID"]
+		self._startingAddress = config["startingAddress"]
 		self._wordOrder = self.get_data_format(config["dataFormat"]["wordOrder"])
 		self._byteOrder = self.get_data_format(config["dataFormat"]["byteOrder"])
 		self._supportedTypes = config["dataFormat"]["supportedTypes"]
+		self._scanningCycleInSecond = config["scanningCycleInSecond"]
+		self._requestCycle = config["minResponseTimeInMiliSecond"] /1000
+		self._cycleTTL = self._scanningCycleInSecond / self._requestCycle
 		self._eventLoopLocal = None
 		self._evetLoopMainThread = loopMainThread
 		self._conn = None
 		self._queue = sharedQueue
-		self._requestQ = []
-		#request cycle = 50ms
-		self._requestCycle = 100/1000
 		self._on_task_finsih_callback = None
 		self._taskDict = config["tasks"]
-		self._tasks = {}
+		self._tasks = []
 		self._tryingconnect = False
 	
 	def get_data_format(self, stringType):
@@ -40,7 +56,7 @@ class ModbusDevice:
 		elif (stringType== "Endian.Big"):
 			returnedValue = Endian.Big
 		else:
-			returnedValue = defaulOrder
+			returnedValue = defaultOrder
 		return returnedValue
 
 	def start(self, on_task_finsih_callback):
@@ -55,103 +71,8 @@ class ModbusDevice:
 			print('Cannot connect. Try to reconnect ...', self._ip)
 			#self._tryingconnect = True
 			asyncio.ensure_future(self.tryconnect(), loop=self._conn.loop)
-		self.finalizeTask()
+		self.create_task(self._taskDict)
 		self._conn.loop.run_forever()
-	
-	def finalizeTask(self):
-		def tasksForTaskName(taskSet):
-			print('TaskSet recieved %s', len(taskSet))
-			if taskSet is None:
-				print('taskSet is None')
-				return None
-			else:
-				tempTaskSet = []
-				taskCount = len(taskSet)
-				tempRec = taskSet[0]
-				fpos = []
-				for x in range(0, tempRec["numberOfRegisters"]):
-					fpos.append(x)
-					lastPos = x
-				tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": fpos}]
-				tempRec.pop("tagName")
-				print ('1st line: ', json.dumps(tempRec))
-				tempTaskSet.append(tempRec)
-				if taskCount > 1:
-					print('Enter taskCount > 1')
-					for i in range(1, taskCount):
-						print('Loop at task [%s] value %s', i, taskSet[i])
-						noRegs = taskSet[i]["numberOfRegisters"]
-						if taskSet[i]["startAddress"] == (taskSet[i-1]["startAddress"] + taskSet[i-1]["numberOfRegisters"]):
-							print('This datapoint is nearby the previous one')
-							pos = []
-							for no in range(0, taskSet[i]["numberOfRegisters"]):
-								lastPos = lastPos +1
-								pos.append(lastPos)
-								newNoRegs = tempTaskSet[-1]["numberOfRegisters"] + 1
-								tempTaskSet[-1]["numberOfRegisters"] = newNoRegs
-							tempTaskSet[-1]["tags"].append({"tagName": taskSet[i]["tagName"], "unit": taskSet[i]["unit"], "dataType": taskSet[i]["dataType"], "positions": pos})
-						#done the series of tasks
-						else:
-							print('This datapoint is far away from the previous one')
-							nPos = []
-							tempRec = taskSet[i]
-							for x in range(0, tempRec["numberOfRegisters"]):
-								nPos.append(x)
-								lastPos = x
-							tempRec["tags"] = [{"tagName": tempRec["tagName"], "unit": tempRec["unit"], "dataType": tempRec["dataType"], "positions": nPos}]
-							tempRec.pop("tagName")
-							tempTaskSet.append(tempRec)
-					print('Tasks after processing {}', len(tempTaskSet))
-				return tempTaskSet
-
-		#shorten the given list
-		tempTaskDict = self._taskDict
-		for taskName, taskSet in tempTaskDict.items():
-			if taskSet is not None:
-				self._tasks[taskName] = []
-				#group by cycle
-				temp = {}
-				for task in taskSet:
-					cycle = task["cycleInSecond"]
-					if cycle not in temp.keys():
-						#prepare empty List
-						temp[cycle] = []
-					temp[cycle].append(task)
-				for cycle, tasks in temp.items():
-					tasks.sort(key= self.customSortRegister)
-					tempTasks = tasksForTaskName(tasks)
-					self._tasks[taskName].extend(tempTasks)
-					#self.createTask(taskName, cycle, tempTasks)
-		print('Tasks will be created: {}',  len(self._tasks))
-		self.createTask(self._tasks)
-		asyncio.ensure_future(self.processRequestQueue(), loop=self._conn.loop)
-	
-	#create tasks based on cycle
-	def createTask(self, tasks):
-		#print('Create task {} for cycle {} in {}:\r\n{}'.format(taskName, cycle, threading.current_thread().name, json.dumps(tasks, indent=4)))
-		for taskName, taskSet in tasks.items():
-			for task in taskSet:
-				cycle = task["cycleInSecond"]
-				asyncio.ensure_future(self.task_cycle(taskName, cycle, task), loop=self._conn.loop)
-
-	async def task_cycle(self, taskName, cycleInSecond, task):
-		while True:
-			if self._conn.protocol:
-				#create all read/write tasks
-				#for task in tasks:
-					#self._eventLoopLocal.create_task(self.read_registers(task["startAddress"], task["numberOfRegisters"], self._on_task_finsih_callback))
-				TTL = cycleInSecond/self._requestCycle
-				rec = {"TTL": TTL, "taskName": taskName, "request":task}
-				self._requestQ.append(rec)
-					#asyncio.ensure_future(self.read_registers(task["startAddress"], task["numberOfRegisters"], self._on_task_finsih_callback), loop=self._conn.loop)
-					#print('Create task: ', rec)
-				#wait for cycle to pass and create new read/write tasks
-				await asyncio.sleep(cycleInSecond)
-			else:
-				print('Connection lost. No reading is schedule')
-				break
-		#Stop reading/writing and Try to reconnect
-		asyncio.ensure_future(self.tryconnect(), loop=self._conn.loop)
 
 	async def tryconnect(self):
 		print('Start tryconnect function')
@@ -167,88 +88,143 @@ class ModbusDevice:
 				self._tryingconnect = False
 				if self._conn.protocol:
 					print('Device connected ', self._ip)
-					self.createTask(self._tasks)
+					#Start to create tasklist
+					#self.createTask(self._tasks)
 				else:
 					print('Try to reconnect ...', self._ip)
 					asyncio.ensure_future(self.tryconnect(), loop=self._conn.loop)
 		else:
 			print('There is already some tryconnect coroutine is running. no need to schedule this one')
 
-	def customSortRegister(self, item):
-		return item["startAddress"]
-
-	def customSortTask(self, item):
-		return item["TTL"]
-
-	async def processRequestQueue(self):
-		while True:
-			for item in self._requestQ:
-				curV = item["TTL"]
-				item.update({"TTL": curV -1})
-			self._requestQ.sort(key= self.customSortTask)
-			#print(self._requestQ)
-			if len(self._requestQ) > 0:
-				if self._requestQ[0]["TTL"] < 1:
-					toDotask = self._requestQ.pop(0)
-					#print('About to execute task: ', json.dumps(toDotask, indent=4))
-					if toDotask["taskName"] == "read_registers":
-						asyncio.ensure_future(self.read_registers(toDotask["taskName"], toDotask["request"]["startAddress"], toDotask["request"]["numberOfRegisters"], self._on_task_finsih_callback), loop=self._conn.loop)
-					elif toDotask["taskName"] == "write_registers":
-						print('execute write_registers task --> ignore')
-			await asyncio.sleep(self._requestCycle)
-
 	async def send_queue(self, data):
-		#print('{} about to send {} to MainThread'.format(threading.current_thread().name, data))
 		self._queue.put_nowait(data)
 		await self._queue.join()
 
-	async def read_registers(self, taskName, startAddress, numberOfRegisters, callback):
+	async def read_registers(self, task, taskID):
 		responseSet = []
 		if self._conn.protocol:
-			result = await self._conn.protocol.read_holding_registers(startAddress, numberOfRegisters, unit=self._unitID)
+			startAddress = task["offSet"]
+			numberOfWords = task["numberOfWords"]
+			result = await self._conn.protocol.read_holding_registers(startAddress, numberOfWords, unit=self._unitID)
 			#check if out of range
 			for reg in result.registers:
 				responseSet.append(reg)
-			asyncio.run_coroutine_threadsafe(self.send_queue(self.convert2TagName(taskName, startAddress, responseSet)), self._evetLoopMainThread)
+			#decode recieved values into tagName and prepare for adding to Queue
+			datapointList = self.task_decode(responseSet, task, taskID)
+			for datapoint in datapointList:
+				asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
 			print('Connection lost during task execution. Cancel this red_registers coroutine')
 
-	def convert2TagName(self, taskName, startAddress, responseSet):
-		responseCount= len(responseSet)
-		if responseCount>0:
-			responseTags = {}
-			if taskName =='read_registers':
-				tasks = self._tasks["read_registers"]
-				for task in tasks:
-					if task["startAddress"] == startAddress:
-						taskRegCount= task["numberOfRegisters"]
-						if taskRegCount != responseCount:
-							print('Response length and registers not match. Something went wrong')
-						else:
-							value = []
-							for reg in task["tags"]:
-								for pos in reg["positions"]:
-									value.insert(0, responseSet[pos]) #insert to the begining of the list to keep the most significant always at the begining
-								#	value.append({startAddress+pos :responseSet[pos]})
-								# ===== added =====
-								data = {}
-								data["value"] = self.decodeValue(value, reg["dataType"])
-								data["unit"] = reg["unit"]
-								data["timeStamp"] = str(datetime.datetime.now())
-								data["dataType"] = reg["dataType"]
-								responseTags["thingID"] = self._thingID
-								responseTags["datapoint"] = reg["tagName"]
-								responseTags["datavalue"] = data
-								# =================
-								#responseTags[reg["tagName"]] = value
-								#quit for loop once hit the target
-								break
-			return 	responseTags
-		else:
-			print('response contains no components!')
-			return None
-	
-	def decodeValue(self, registers, typeString):
+#========= Task creation ============
+
+	def create_task(self, taskDictionary):
+		#task creation goes in sequence: read_coils, read_registers, write_coils, write_registers
+		creation_sequence = ['read_coils', 'read_registers', 'write_coils', 'write_registers']
+		for taskType in creation_sequence:
+			if (taskDictionary[taskType] not None):
+				self.register_task(taskDictionary[taskType], taskType)
+		#start to execute registered tasks
+		asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
+
+	def custom_sort_by_offset(self, item):
+		return item["offSet"]
+
+	def sort_task_by_offset(self, taskList):
+		#taskList is like : [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16"},]
+		#					{"tagName": "powerGenerated", "unit": "kWh", "offSet": 118, "dataType":"uint16"}]
+		#defin sort by offset
+		taskList.sort(key = self.custom_sort_by_offset)
+		#assign numberofWord to each register
+		for reg in taskList:
+			#check if the dataType is valid
+			if reg["dataType"] not in defaultNoWords.keys():
+				print("Not supported data type")
+				#if it is invalid then break the for loop
+				break
+			reg["numberOfWords"] = defaultNoWords[reg["dataType"]]
+
+	def register_task(self, taskList, taskType):
+		#taskList is like : [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16", "numberOfWords":2},]
+		#					{"tagName": "powerGenerated", "unit": "kWh", "offSet": 118, "dataType":"uint16", "numberOfWords":2}]
+		taskCount = len(taskList)
+		#if number of tasks = 0 then return with no registration
+		if taskCount == 0:
+			return
+		#tempTask to store current conclusion and assign tracking value to taskList's 1st component
+		tempTask = {"taskType": taskType, "offSet":taskList[0]["offSet"], "numberOfWords":taskList[0]["numberOfWords"]}
+		#insert the tempTask to global taskList at the very bottom of the list. Then check its position
+		self._tasks.append(tempTask)
+		taskPosition = len(self._tasks) -1
+		#update the position and taskID in the task. The 1st task now be like
+		#{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16", "numberOfWords":2, "taskID": taskPosition, "dataPosition": 0}
+		taskList[0]["taskID"] = taskPosition
+		taskList[0]["dataPosition"] = 0
+		#update the TTL of the task to be exactly its position so the least the position is, the high its priority is
+		self._tasks[taskPosition]["TTL"] = taskPosition
+		#start to check if only the number of tasks starting from 2
+		if taskCount > 1:
+			for i in range(1, taskCount):
+				#check if this register is nearby the previous one
+				if (taskList[i]["offSet"] == (taskList[i-1]["offSet"] + taskList[i-1]["numberOfWords"])):
+					#If yes. Then increase the total number of words that need to be read
+					self._tasks[taskPosition]["numberOfWords"] = self._tasks[taskPosition]["numberOfWords"] + taskList[i]["numberOfWords"]
+					#update the position and taskID for this task
+					taskList[i]["taskID"] = taskPosition
+					taskList[i]["dataPosition"] = taskList[i-1]["dataPosition"] + taskList[i-1]["numberOfWords"]
+				else:
+					#create a new tempTask starting with the current task and insert into the global taskList
+					tempTask = {"taskType": taskType, "offSet":taskList[i]["offSet"], "numberOfWords":taskList[i]["numberOfWords"]}
+					self._tasks.append(tempTask)
+					taskPosition = len(self._tasks) -1
+					#update the current task
+					taskList[i]["taskID"] = taskPosition
+					taskList[i]["dataPosition"] = 0
+
+	async def task_executor(self, taskList):
+		#taskList is like [{"taskType": "read_registers", "offSet":116, "numberOfWords":4, "TTL":0},
+		# 					{"taskType": "read_registers", "offSet":124, "numberOfWords":8, "TTL":1}]
+		#make it scan for task forever
+		while True:
+			if len(self._tasks) > 0:
+				#execute the top priority task which its TTL = 0
+				for i in range(0, len(taskList)):
+					if (taskList[i]["TTL"] == 0):
+						#re-assign the TTL to the based_TTL and plus 1 for later reduction
+						taskList[i]["TTL"] = self._cycleTTL +1
+						if taskList[i]["taskType"] == "read_registers":
+							asyncio.ensure_future(self.read_registers(self._tasks[0], i), loop=self._conn.loop)
+					#as 1 cycle is passed, we reduce all TTL of the taskList
+					taskList[i]["TTL"] = taskList[i]["TTL"] -1
+			#wait for the next scanning cycle
+			await asyncio.sleep(self._requestCycle)
+
+	def task_decode(self, valueList, task, taskID):
+		#taskID = 1
+		#task = {"taskType": "read_registers", "offSet":116, "numberOfWords":4, "TTL":0}
+		dicTask = None
+		taskType = task["taskType"]
+		dicTaskList = self._taskDict[taskType]
+		#dictTaskList is like [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16", "numberOfWords":2, "taskID": taskPosition, "dataPosition": 0}]
+		decodedDatapointList = []
+		decodedDatapoint = None
+		for taskDict in dicTaskList:
+			#look for the register that match with the task
+			if (taskDict["taskID"] == taskID):
+				#prepare some info
+				startingPosition = taskDict["dataPosition"]
+				endingPosition = taskDict["dataPosition"] + taskDict["numberOfWords"] + 1
+				dataType = taskDict["dataType"]
+				rawValue = valueList[startingPosition:endingPosition]
+				#decode value
+				decodedValue = self.value_decode(rawValue, dataType)
+				#prepare the frame to send
+				dataSend = {"value": decodedValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.now())}
+				decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
+				decodedDatapointList.append(decodedDatapoint)
+		return decodedDatapointList
+
+	def value_decode(self, registers, typeString):
 		decoder = BinaryPayloadDecoder.fromRegisters(registers, byteorder=self._byteOrder, wordorder=self._wordOrder)
 		value = None
 		if (typeString in self._supportedTypes):
