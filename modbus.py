@@ -112,7 +112,7 @@ class ModbusDevice:
 				responseSet.append(reg)
 			#decode recieved values into tagName and prepare for adding to Queue
 			datapointList = self.task_decode(responseSet, task, taskID)
-			self._result.append(datapointList)
+			self._result = self._result + datapointList
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
@@ -206,7 +206,9 @@ class ModbusDevice:
 			if (len(self._result) == len(self._tasks)):
 				print('task executor', self._result)
 				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
+				print('content', content)
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+				print('data2Send', data2Send)
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 				self._result.clear()
 			#wait for the next scanning cycle
