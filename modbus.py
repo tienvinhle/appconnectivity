@@ -203,7 +203,8 @@ class ModbusDevice:
 					#as 1 cycle is passed, we reduce all TTL of the taskList
 					taskList[i]["TTL"] = taskList[i]["TTL"] -1
 			#check if all result are avaialble, then send them all
-			if (len(self._result) == (len(self._taskDict)):
+			if (len(self._result) == len(self._tasks)):
+				print('task executor', self._result)
 				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
