@@ -139,7 +139,6 @@ class ModbusDevice:
 			if (len(self._result) == len(self._tasks)):
 				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-				print(data2Send)
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 
 	def custom_sort_by_offset(self, item):
