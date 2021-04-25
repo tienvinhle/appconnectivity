@@ -129,7 +129,17 @@ class ModbusDevice:
 				self.sort_task_by_offset(taskDictionary[taskType])
 				self.register_task(taskDictionary[taskType], taskType)
 		#start to execute registered tasks
-		asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
+		asyncio.ensure_future(self.task_send(), loop=self._conn.loop)
+
+	async def task_send(self):
+		while(True):
+			asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
+			await asyncio.sleep(self._scanningCycleInSecond)
+			if (len(self._result) == len(self._tasks)):
+				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
+				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+				self._result.clear()
 
 	def custom_sort_by_offset(self, item):
 		return item["offSet"]
@@ -191,28 +201,26 @@ class ModbusDevice:
 		#taskList is like [{"taskType": "read_registers", "offSet":116, "numberOfWords":4, "TTL":0},
 		# 					{"taskType": "read_registers", "offSet":124, "numberOfWords":8, "TTL":1}]
 		#make it scan for task forever
-		while True:
-			if len(taskList) > 0:
-				#execute the top priority task which its TTL = 0
-				for i in range(0, len(taskList)):
-					if (taskList[i]["TTL"] == 0):
-						#re-assign the TTL to the based_TTL and plus 1 for later reduction
-						taskList[i]["TTL"] = self._cycleTTL +1
-						if taskList[i]["taskType"] == "read_registers":
-							asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
-					#as 1 cycle is passed, we reduce all TTL of the taskList
-					taskList[i]["TTL"] = taskList[i]["TTL"] -1
-			#check if all result are avaialble, then send them all
-			if (len(self._result) == len(self._tasks)):
-				print('task executor', self._result)
-				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
-				print('content', content)
-				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-				print('data2Send', data2Send)
-				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
-				self._result.clear()
+	
+		if len(taskList) > 0:
+			#execute the top priority task which its TTL = 0
+			for i in range(0, len(taskList)):
+		#		if (taskList[i]["TTL"] == 0):
+					#re-assign the TTL to the based_TTL and plus 1 for later reduction
+		#			taskList[i]["TTL"] = self._cycleTTL +1
+				if taskList[i]["taskType"] == "read_registers":
+					asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
+					await asyncio.sleep(self._requestCycle)
+				#as 1 cycle is passed, we reduce all TTL of the taskList
+		#		taskList[i]["TTL"] = taskList[i]["TTL"] -1
+		#check if all result are avaialble, then send them all
+		#if (len(self._result) == len(self._tasks)):
+		#	content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
+		#	data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+		#	asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+		#	self._result.clear()
 			#wait for the next scanning cycle
-			await asyncio.sleep(self._requestCycle)
+			#await asyncio.sleep(self._requestCycle)
 
 	def task_decode(self, valueList, task, taskID):
 		#taskID = 1
