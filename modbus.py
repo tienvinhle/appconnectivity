@@ -11,20 +11,20 @@ from collections import OrderedDict
 import datetime
 
 defaultOrder = Endian.Little
-defaultNoWords = {
-	"bits":1,
-	"int8":1,
-	"uint8":1,
-	"int16":2,
-	"uint16":2,
-	"int32":4,
-	"uint32":4,
-	"int64":8,
-	"uint64":8,
-	"float16":2,
-	"float32":4,
-	"float64":8
-}
+#defaultNoWords = {
+#	"bits":1,
+#	"int8":1,
+#	"uint8":1,
+#	"int16":2,
+#	"uint16":2,
+#	"int32":4,
+#	"uint32":4,
+#	"int64":8,
+#	"uint64":8,
+#	"float16":2,
+#	"float32":4,
+#	"float64":8
+#}
 
 
 class ModbusDevice:
@@ -132,22 +132,23 @@ class ModbusDevice:
 		return item["offSet"]
 
 	def sort_task_by_offset(self, taskList):
-		#taskList is like : [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16"},]
-		#					{"tagName": "powerGenerated", "unit": "kWh", "offSet": 118, "dataType":"uint16"}]
+		#taskList is like : [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16", "PF":1, "size":1},]
+		#					 {"tagName": "powerGenerated", "unit": "kWh", "offSet": 118, "dataType":"uint16", "PF":1, "size":1}]
 		#defin sort by offset
 		taskList.sort(key = self.custom_sort_by_offset)
 		#assign numberofWord to each register
 		for reg in taskList:
 			#check if the dataType is valid
-			if reg["dataType"] not in defaultNoWords.keys():
-				print("Not supported data type")
+			#if reg["dataType"] not in defaultNoWords.keys():
+			#	print("Not supported data type")
 				#if it is invalid then break the for loop
-				break
-			reg["numberOfWords"] = defaultNoWords[reg["dataType"]]
+			#	break
+			# 1 size = 1 register = 2 words
+			reg["numberOfWords"] = reg["size"] * 2
 
 	def register_task(self, taskList, taskType):
-		#taskList is like : [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16", "numberOfWords":2},]
-		#					{"tagName": "powerGenerated", "unit": "kWh", "offSet": 118, "dataType":"uint16", "numberOfWords":2}]
+		#taskList is like : [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16",  "PF":1, "size":1, "numberOfWords":2},
+		#					{"tagName": "powerGenerated", "unit": "kWh", "offSet": 118, "dataType":"uint16",  "PF":1, "size":1, "numberOfWords":2}]
 		taskCount = len(taskList)
 		#if number of tasks = 0 then return with no registration
 		if taskCount == 0:
@@ -207,7 +208,7 @@ class ModbusDevice:
 		dicTask = None
 		taskType = task["taskType"]
 		dicTaskList = self._taskDict[taskType]
-		#dictTaskList is like [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16", "numberOfWords":2, "taskID": taskPosition, "dataPosition": 0}]
+		#dictTaskList is like [{"tagName": "power", "unit": "W", "offSet": 116, "dataType":"uint16",  "PF":1, "size":1, "numberOfWords":2, "taskID": taskPosition, "dataPosition": 0}]
 		decodedDatapointList = []
 		decodedDatapoint = None
 		for taskDict in dicTaskList:
@@ -218,15 +219,16 @@ class ModbusDevice:
 				endingPosition = taskDict["dataPosition"] + taskDict["numberOfWords"] + 1
 				dataType = taskDict["dataType"]
 				rawValue = valueList[startingPosition:endingPosition]
+				size = taskDict["size"]
 				#decode value
-				decodedValue = self.value_decode(rawValue, dataType)
+				decodedValue = self.value_decode(rawValue, dataType, size)
 				#prepare the frame to send
 				dataSend = {"value": decodedValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
 				decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
 				decodedDatapointList.append(decodedDatapoint)
 		return decodedDatapointList
 
-	def value_decode(self, registers, typeString):
+	def value_decode(self, registers, typeString, size):
 		decoder = BinaryPayloadDecoder.fromRegisters(registers, byteorder=self._byteOrder, wordorder=self._wordOrder)
 		value = None
 		if (typeString in self._supportedTypes):
@@ -254,6 +256,8 @@ class ModbusDevice:
 				value = decoder.decode_64bit_uint()
 			elif (typeString == "float64"):
 				value = decoder.decode_64bit_float()
+			elif (typeString == "string"):
+				value = decoder.decode_string(size)
 			else:
 				value = "Invalid type"
 		else:
