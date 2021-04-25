@@ -219,12 +219,13 @@ class ModbusDevice:
 				endingPosition = taskDict["dataPosition"] + taskDict["numberOfWords"] + 1
 				dataType = taskDict["dataType"]
 				rawValue = valueList[startingPosition:endingPosition]
+				PF = taskDict["PF"]
 				size = taskDict["size"]
 				#decode value
 				decodedValue = self.value_decode(rawValue, dataType, size)
 				#calculate with Power Factor
-				if taskDict["PF"] is not None:
-					finallValue = decodedValue * (10**taskDict["PF"])
+				if PF is not None:
+					finalValue = round(decodedValue * (10**PF), abs(PF))
 				else:
 					finalValue = decodedValue
 				#prepare the frame to send
