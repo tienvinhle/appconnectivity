@@ -222,8 +222,13 @@ class ModbusDevice:
 				size = taskDict["size"]
 				#decode value
 				decodedValue = self.value_decode(rawValue, dataType, size)
+				#calculate with Power Factor
+				if taskDict["PF"] is not None:
+					finallValue = decodedValue * (10**taskDict["PF"])
+				else:
+					finalValue = decodedValue
 				#prepare the frame to send
-				dataSend = {"value": decodedValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
+				dataSend = {"value": finalValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
 				decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
 				decodedDatapointList.append(decodedDatapoint)
 		return decodedDatapointList
