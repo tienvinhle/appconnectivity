@@ -111,10 +111,12 @@ class ModbusDevice:
 				responseSet.append(reg)
 			#decode recieved values into tagName and prepare for adding to Queue
 			datapointList = self.task_decode(responseSet, task, taskID)
-			for datapoint in datapointList:
-				asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
+			return datapointList
+			#for datapoint in datapointList:
+			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
 			print('Connection lost during task execution. Cancel this red_registers coroutine')
+			return None
 
 #========= Task creation ============
 
@@ -188,6 +190,7 @@ class ModbusDevice:
 		#taskList is like [{"taskType": "read_registers", "offSet":116, "numberOfWords":4, "TTL":0},
 		# 					{"taskType": "read_registers", "offSet":124, "numberOfWords":8, "TTL":1}]
 		#make it scan for task forever
+		resultList = []
 		while True:
 			if len(taskList) > 0:
 				#execute the top priority task which its TTL = 0
@@ -196,9 +199,15 @@ class ModbusDevice:
 						#re-assign the TTL to the based_TTL and plus 1 for later reduction
 						taskList[i]["TTL"] = self._cycleTTL +1
 						if taskList[i]["taskType"] == "read_registers":
-							asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
+							result = await asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
+							resultList = resultList + result
 					#as 1 cycle is passed, we reduce all TTL of the taskList
 					taskList[i]["TTL"] = taskList[i]["TTL"] -1
+					if (i == len(taskList)-1):
+						content = {"data": resultList, "timeStamp": str(datetime.datetime.utcnow())}
+						data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+						asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
+						resultList.clear()
 			#wait for the next scanning cycle
 			await asyncio.sleep(self._requestCycle)
 
@@ -229,8 +238,9 @@ class ModbusDevice:
 				else:
 					finalValue = decodedValue
 				#prepare the frame to send
-				dataSend = {"value": finalValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
-				decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
+				#dataSend = {"value": finalValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
+				#decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
+				decodedDatapoint = {taskDict["tagName"]: finalValue, "unit": taskDict["unit"]}
 				decodedDatapointList.append(decodedDatapoint)
 		return decodedDatapointList
 
