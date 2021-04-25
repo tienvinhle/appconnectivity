@@ -257,7 +257,7 @@ class ModbusDevice:
 			elif (typeString == "float64"):
 				value = decoder.decode_64bit_float()
 			elif (typeString == "string"):
-				value = decoder.decode_string(size)
+				value = decoder.decode_string(size).decode()
 			else:
 				value = "Invalid type"
 		else:
