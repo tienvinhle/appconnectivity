@@ -201,12 +201,13 @@ class ModbusDevice:
 						if taskList[i]["taskType"] == "read_registers":
 							result = await asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
 							resultList = resultList + result
+							print('task executor ', resultList)
 					#as 1 cycle is passed, we reduce all TTL of the taskList
 					taskList[i]["TTL"] = taskList[i]["TTL"] -1
-					if (i == len(taskList)-1):
+					if (i == (len(taskList)-1)):
 						content = {"data": resultList, "timeStamp": str(datetime.datetime.utcnow())}
 						data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-						asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
+						asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 						resultList.clear()
 			#wait for the next scanning cycle
 			await asyncio.sleep(self._requestCycle)
