@@ -100,6 +100,7 @@ class ModbusDevice:
 	async def send_queue(self, data):
 		self._queue.put_nowait(data)
 		await self._queue.join()
+		self._result.clear()
 
 	async def read_registers(self, task, taskID):
 		responseSet = []
@@ -140,7 +141,6 @@ class ModbusDevice:
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
 				print(data2Send)
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
-				self._result.clear()
 
 	def custom_sort_by_offset(self, item):
 		return item["offSet"]
