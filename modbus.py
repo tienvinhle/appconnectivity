@@ -48,6 +48,7 @@ class ModbusDevice:
 		self._taskDict = config["tasks"]
 		self._tasks = []
 		self._tryingconnect = False
+		self._result = []
 	
 	def get_data_format(self, stringType):
 		returnedValue = None
@@ -111,7 +112,7 @@ class ModbusDevice:
 				responseSet.append(reg)
 			#decode recieved values into tagName and prepare for adding to Queue
 			datapointList = self.task_decode(responseSet, task, taskID)
-			return datapointList
+			self._result.append(datapointList)
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
@@ -190,7 +191,6 @@ class ModbusDevice:
 		#taskList is like [{"taskType": "read_registers", "offSet":116, "numberOfWords":4, "TTL":0},
 		# 					{"taskType": "read_registers", "offSet":124, "numberOfWords":8, "TTL":1}]
 		#make it scan for task forever
-		resultList = []
 		while True:
 			if len(taskList) > 0:
 				#execute the top priority task which its TTL = 0
@@ -199,16 +199,15 @@ class ModbusDevice:
 						#re-assign the TTL to the based_TTL and plus 1 for later reduction
 						taskList[i]["TTL"] = self._cycleTTL +1
 						if taskList[i]["taskType"] == "read_registers":
-							result = await asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
-							resultList = resultList + result
-							print('task executor ', resultList)
+							asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
 					#as 1 cycle is passed, we reduce all TTL of the taskList
 					taskList[i]["TTL"] = taskList[i]["TTL"] -1
-					if (i == (len(taskList)-1)):
-						content = {"data": resultList, "timeStamp": str(datetime.datetime.utcnow())}
-						data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-						asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
-						resultList.clear()
+			#check if all result are avaialble, then send them all
+			if (len(self._result) == (len(self._taskDict)):
+				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
+				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+				self._result.clear()
 			#wait for the next scanning cycle
 			await asyncio.sleep(self._requestCycle)
 
