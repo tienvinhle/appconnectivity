@@ -11,20 +11,6 @@ from collections import OrderedDict
 import datetime
 
 defaultOrder = Endian.Little
-#defaultNoWords = {
-#	"bits":1,
-#	"int8":1,
-#	"uint8":1,
-#	"int16":2,
-#	"uint16":2,
-#	"int32":4,
-#	"uint32":4,
-#	"int64":8,
-#	"uint64":8,
-#	"float16":2,
-#	"float32":4,
-#	"float64":8
-#}
 
 
 class ModbusDevice:
@@ -136,10 +122,9 @@ class ModbusDevice:
 		while(True):
 			asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
 			await asyncio.sleep(self._scanningCycleInSecond)
-			if (len(self._result) == len(self._tasks)):
-				content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
-				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+			content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
+			data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+			asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 
 	def custom_sort_by_offset(self, item):
 		return item["offSet"]
