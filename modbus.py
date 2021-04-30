@@ -236,6 +236,9 @@ class ModbusDevice:
 				if taskList[i]["taskType"] == "read_registers":
 					asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
 					await asyncio.sleep(self._requestCycle)
+				if taskList[i]["taskType"] == "watch_events":
+					asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
+					await asyncio.sleep(self._requestCycle)
 				#as 1 cycle is passed, we reduce all TTL of the taskList
 		#		taskList[i]["TTL"] = taskList[i]["TTL"] -1
 		#check if all result are avaialble, then send them all
