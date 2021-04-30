@@ -124,7 +124,7 @@ class ModbusDevice:
 					r = self.check_event(datapoint)
 					#check if the result is not empty
 					if r:
-						self._result.append(r)
+						self._result= self._result + r
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
@@ -150,7 +150,6 @@ class ModbusDevice:
 			regs = []
 			events = []
 			for rec in self._result:
-				print(rec)
 				if rec["taskType"] == 'read_registers':
 					rec.pop("taskType")
 					regs.append(rec)
@@ -280,7 +279,7 @@ class ModbusDevice:
 				#prepare the frame to send
 				#dataSend = {"value": finalValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
 				#decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
-				decodedDatapoint = {taskDict["tagName"]: finalValue, "unit": taskDict["unit"], "taskType":taskType}
+				decodedDatapoint = {"name": taskDict["tagName"], "value": finalValue, "unit": taskDict["unit"], "taskType":taskType}
 				decodedDatapointList.append(decodedDatapoint)
 		return decodedDatapointList
 
