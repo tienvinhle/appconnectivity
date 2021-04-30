@@ -150,6 +150,7 @@ class ModbusDevice:
 			regs = []
 			events = []
 			for rec in self._result:
+				print(rec)
 				if rec["taskType"] == 'read_registers':
 					rec.pop("taskType")
 					regs.append(rec)
