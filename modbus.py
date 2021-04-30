@@ -322,7 +322,6 @@ class ModbusDevice:
 	def check_event(self, datapoint):
 		result = []
 		for eventCode, eventValue in event1.items():
-			#sorry , I just wanna make it quick . So, I hardcore its key event1
-			if (datapoint["event1"] & eventValue) > 0:
+			if (datapoint["value"] & eventValue) > 0:
 				result.append({"event": eventCode, "timeStamp": str(datetime.datetime.utcnow()), "taskType":datapoint["taskType"]})
 		return result
