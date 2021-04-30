@@ -12,6 +12,24 @@ import datetime
 
 defaultOrder = Endian.Little
 
+event1 = {
+	'GROUND_FAULT'		:	0b0000000000000001,
+	'DC_OVER_VOLT'		:	0b0000000000000010,
+	'AC_DISCONNECT'		:	0b0000000000000100,
+	'DC_DISCONNECT'		:	0b0000000000001000,
+	'GRID_DISCONNECT'	:	0b0000000000010000,
+	'CABINET_OPEN'		:	0b0000000000100000,
+	'MANUAL_SHUTDOWN'	:	0b0000000001000000,
+	'OVER_TEMP'			:	0b0000000010000000,
+	'OVER_FREQUENCY'	:	0b0000000100000000,
+	'UNDER_FREQUENCY'	:	0b0000001000000000,
+	'AC_OVER_VOLT'		:	0b0000010000000000,
+	'AC_UNDER_VOLT'		:	0b0000100000000000,
+	'BLOWN_STRING_FUSE'	:	0b0001000000000000,
+	'UNDER_TEMP'		:	0b0010000000000000,
+	'MEMORY_LOSS'		:	0b0100000000000000,
+	'HW_TEST_FAILURE'	:	0b1000000000000000
+}
 
 class ModbusDevice:
 	def __init__(self, thingID, config, sharedQueue, loopMainThread):
@@ -99,7 +117,14 @@ class ModbusDevice:
 				responseSet.append(reg)
 			#decode recieved values into tagName and prepare for adding to Queue
 			datapointList = self.task_decode(responseSet, task, taskID)
-			self._result = self._result + datapointList
+			for datapoint in datapointList:
+				if datapoint["taskType"] == 'read_registers':
+					self._result.append(datapoint)
+				elif datapoint["taskType"] == 'watch_events':
+					r = self.check_event(datapoint)
+					#check if the result is not empty
+					if r:
+						self._result.append(r)
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
@@ -110,7 +135,7 @@ class ModbusDevice:
 
 	def create_task(self, taskDictionary):
 		#task creation goes in sequence: read_coils, read_registers, write_coils, write_registers
-		creation_sequence = ['read_coils', 'read_registers', 'write_coils', 'write_registers']
+		creation_sequence = ['read_coils', 'read_registers', 'write_coils', 'write_registers', 'watch_events']
 		for taskType in creation_sequence:
 			if (taskDictionary[taskType] is not None):
 				self.sort_task_by_offset(taskDictionary[taskType])
@@ -122,9 +147,24 @@ class ModbusDevice:
 		while(True):
 			asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
 			await asyncio.sleep(self._scanningCycleInSecond)
-			content = {"data": self._result, "timeStamp": str(datetime.datetime.utcnow())}
-			data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-			asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+			regs = []
+			events = []
+			for rec in self._result:
+				if rec["taskType"] == 'read_registers':
+					rec.pop("taskType")
+					regs.append(rec)
+				elif rec["taskType"] == 'watch_events':
+					rec.pop("taskType")
+					events.append(rec)
+			#check if the array is not empty then prepare content and send to Q
+			if regs:
+				content = {"data": regs, "timeStamp": str(datetime.datetime.utcnow())}
+				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
+				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+			if events:
+				content = {"data": {"activeEvents": events}}
+				data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": content}
+				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 
 	def custom_sort_by_offset(self, item):
 		return item["offSet"]
@@ -236,7 +276,7 @@ class ModbusDevice:
 				#prepare the frame to send
 				#dataSend = {"value": finalValue, "unit": taskDict["unit"], "dataType":taskDict["dataType"], "timeStamp": str(datetime.datetime.utcnow())}
 				#decodedDatapoint = {"thingID": self._thingID, "datapoint": taskDict["tagName"], "dataValue": dataSend}
-				decodedDatapoint = {taskDict["tagName"]: finalValue, "unit": taskDict["unit"]}
+				decodedDatapoint = {taskDict["tagName"]: finalValue, "unit": taskDict["unit"], "taskType":taskType}
 				decodedDatapointList.append(decodedDatapoint)
 		return decodedDatapointList
 
@@ -275,3 +315,11 @@ class ModbusDevice:
 		else:
 			value = "Not supported type"
 		return value
+
+	def check_event(self, datapoint):
+		result = []
+		for eventCode, eventValue in event1:
+			#sorry , I just wanna make it quick . So, I hardcore its key event1
+			if (datapoint["event1"] & eventValue) > 0:
+				result.append({"event": eventCode, "timeStamp": str(datetime.datetime.utcnow()), "taskType":datapoint["taskType"]})
+		return result
