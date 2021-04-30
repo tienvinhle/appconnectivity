@@ -162,7 +162,7 @@ class ModbusDevice:
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 			if events:
-				content = {"data": {"activeEvents": events}}
+				content = {"activeEvents": events}
 				data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": content}
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 
