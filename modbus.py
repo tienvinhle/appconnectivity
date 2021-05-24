@@ -356,7 +356,7 @@ class ModbusDevice:
 
 	def add_or_replace(self, data, theList):
 		dataname = data["name"]
-		for x in range(len(theList)):
+		theList.insert(0, data)
+		for x in range(1, len(theList)):
 			if theList[x]["name"] == dataname:
-				theList.pop(x)
-				theList.insert(x, data)
+				theList.pop(x)			
