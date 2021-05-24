@@ -148,7 +148,7 @@ class ModbusDevice:
 						#check if the result is not empty
 						if r:
 							self._event= self._event + r
-							data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": self._event}
+							data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": self._event}
 							asyncio.run_coroutine_threadsafe(self.send_queue(data2Send, self._event), self._evetLoopMainThread)
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
