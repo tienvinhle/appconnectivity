@@ -360,4 +360,4 @@ class ModbusDevice:
 			print("when x is: ", x)
 			if theList[x]["name"] == dataname:
 				theList.pop(x)
-		theList.append(data)
+				theList.append(data)		
