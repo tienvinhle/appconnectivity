@@ -2,7 +2,7 @@ import asyncio
 import functools
 import threading
 import time
-from pymodbus.client.asynchronous.tcp import AsyncModbusTCPClient as ModbusClient
+from pymodbus.client.asynchronous.serial import AsyncModbusSerialClient as ModbusClientRTU
 from pymodbus.client.asynchronous import schedulers
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.constants import Endian
@@ -31,38 +31,19 @@ event1 = {
 	'HW_TEST_FAILURE'	:	0b1000000000000000
 }
 
-event1Desc = {
-	'GROUND_FAULT'		:	{'Id': 1, 'Type': 'Fault'},
-	'DC_OVER_VOLT'		:	{'Id': 2, 'Type': 'Alarm'},
-	'AC_DISCONNECT'		:	{'Id': 3, 'Type': 'Alarm'},
-	'DC_DISCONNECT'		:	{'Id': 4, 'Type': 'Alarm'},
-	'GRID_DISCONNECT'	:	{'Id': 5, 'Type': 'Alarm'},
-	'CABINET_OPEN'		:	{'Id': 6, 'Type': 'Alarm'},
-	'MANUAL_SHUTDOWN'	:	{'Id': 7, 'Type': 'Alarm'},
-	'OVER_TEMP'			:	{'Id': 8, 'Type': 'Alarm'},
-	'OVER_FREQUENCY'	:	{'Id': 9, 'Type': 'Alarm'},
-	'UNDER_FREQUENCY'	:	{'Id': 10, 'Type': 'Alarm'},
-	'AC_OVER_VOLT'		:	{'Id': 11, 'Type': 'Alarm'},
-	'AC_UNDER_VOLT'		:	{'Id': 12, 'Type': 'Alarm'},
-	'BLOWN_STRING_FUSE'	:	{'Id': 13, 'Type': 'Alarm'},
-	'UNDER_TEMP'		:	{'Id': 14, 'Type': 'Alarm'},
-	'MEMORY_LOSS'		:	{'Id': 15, 'Type': 'Alarm'},
-	'HW_TEST_FAILURE'	:	{'Id': 16, 'Type': 'Fault'}
-}
-
-class ModbusDevice:
+class ModbusMaster:
 	def __init__(self, thingID, config, sharedQueue, loopMainThread):
 		self._thingID = thingID
-		self._ip = config["ip"]
 		self._port = config["port"]
-		self._unitID = config["unitID"]
-		self._startingAddress = config["startingAddress"]
-		self._wordOrder = self.get_data_format(config["dataFormat"]["wordOrder"])
-		self._byteOrder = self.get_data_format(config["dataFormat"]["byteOrder"])
-		self._supportedTypes = config["dataFormat"]["supportedTypes"]
+		self._baudrate = config["baudrate"]        
+		#self._unitID = config["unitID"]
+		#self._startingAddress = config["startingAddress"]
+		#self._wordOrder = self.get_data_format(config["dataFormat"]["wordOrder"])
+		#self._byteOrder = self.get_data_format(config["dataFormat"]["byteOrder"])
+		#self._supportedTypes = config["dataFormat"]["supportedTypes"]
 		self._scanningCycleInSecond = config["scanningCycleInSecond"]
 		self._requestCycle = config["minResponseTimeInMiliSecond"] /1000
-		self._cycleTTL = self._scanningCycleInSecond / self._requestCycle
+		#self._cycleTTL = self._scanningCycleInSecond / self._requestCycle
 		self._eventLoopLocal = None
 		self._evetLoopMainThread = loopMainThread
 		self._conn = None
@@ -72,8 +53,6 @@ class ModbusDevice:
 		self._tasks = []
 		self._tryingconnect = False
 		self._result = []
-		self._event = []
-		self._curEvent = 0
 	
 	def get_data_format(self, stringType):
 		returnedValue = None
@@ -88,7 +67,7 @@ class ModbusDevice:
 	def start(self, on_task_finsih_callback):
 		self._on_task_finsih_callback = on_task_finsih_callback
 		print('Start to connect device ', self._ip)
-		self._eventLoopLocal, self._conn = ModbusClient(schedulers.ASYNC_IO, host=self._ip, port=self._port, timeout=30)
+		self._eventLoopLocal, self._conn = ModbusClientRTU(schedulers.ASYNC_IO, port=self._port, baudrate=self._baudrate, method="rtu")
 		if self._conn.protocol:
 			#release tryconnect for next use
 			self._tryingconnect = False
@@ -122,10 +101,10 @@ class ModbusDevice:
 		else:
 			print('There is already some tryconnect coroutine is running. no need to schedule this one')
 
-	async def send_queue(self, data, list2Clear):
+	async def send_queue(self, data):
 		self._queue.put_nowait(data)
 		await self._queue.join()
-		list2Clear.clear()
+		self._result.clear()
 
 	async def read_registers(self, task, taskID):
 		responseSet = []
@@ -142,12 +121,10 @@ class ModbusDevice:
 				if datapoint["taskType"] == 'read_registers':
 					self._result.append(datapoint)
 				elif datapoint["taskType"] == 'watch_events':
-					if (self._curEvent != datapoint):
-						self._curEvent = datapoint
-						r = self.check_event(datapoint)
-						#check if the result is not empty
-						if r:
-							self._event= self._event + r
+					r = self.check_event(datapoint)
+					#check if the result is not empty
+					if r:
+						self._result= self._result + r
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
 		else:
@@ -165,30 +142,29 @@ class ModbusDevice:
 				self.register_task(taskDictionary[taskType], taskType)
 		#start to execute registered tasks
 		asyncio.ensure_future(self.task_send(), loop=self._conn.loop)
-		asyncio.ensure_future(self.monitor_event(self._tasks), loop=self._conn.loop)
 
 	async def task_send(self):
 		while(True):
 			asyncio.ensure_future(self.task_executor(self._tasks), loop=self._conn.loop)
 			await asyncio.sleep(self._scanningCycleInSecond)
 			regs = []
-			#events = []
+			events = []
 			for rec in self._result:
 				if rec["taskType"] == 'read_registers':
 					rec.pop("taskType")
 					regs.append(rec)
-				#elif rec["taskType"] == 'watch_events':
-				#	rec.pop("taskType")
-				#	events.append(rec)
+				elif rec["taskType"] == 'watch_events':
+					rec.pop("taskType")
+					events.append(rec)
 			#check if the array is not empty then prepare content and send to Q
 			if regs:
 				content = {"data": regs, "timeStamp": str(datetime.datetime.utcnow())}
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
-				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send, self._result), self._evetLoopMainThread)
-			#if events:
-			#	content = {"activeEvents": events}
-			#	data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": content}
-			#	asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
+			if events:
+				content = {"activeEvents": events}
+				data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": content}
+				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send), self._evetLoopMainThread)
 
 	def custom_sort_by_offset(self, item):
 		return item["offSet"]
@@ -348,17 +324,4 @@ class ModbusDevice:
 		for eventCode, eventValue in event1.items():
 			if (datapoint["value"] & eventValue) > 0:
 				result.append({"event": eventCode, "timeStamp": str(datetime.datetime.utcnow()), "taskType":datapoint["taskType"]})
-		result.append({"RegisterStatus": datapoint["value"]})
 		return result
-
-	async def monitor_event(self, taskList):
-		while(True):
-			await asyncio.sleep(self._requestCycle)
-			if len(taskList) > 0:
-				for i in range(0, len(taskList)):
-					if taskList[i]["taskType"] == "watch_events":
-						await asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
-						await asyncio.sleep(self._requestCycle)
-			if len(self._event) > 0:
-				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": self._event}
-				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send, self._event), self._evetLoopMainThread)
