@@ -359,4 +359,4 @@ class ModbusDevice:
 		for x in range(len(theList)):
 			if theList[x]["name"] == dataname:
 				theList.pop(x)
-			theList.append(data)
+				theList.insert(x, data)
