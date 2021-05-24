@@ -140,7 +140,8 @@ class ModbusDevice:
 			datapointList = self.task_decode(responseSet, task, taskID)
 			for datapoint in datapointList:
 				if datapoint["taskType"] == 'read_registers':
-					self._result.append(datapoint)
+					self.add_or_replace(datapoint, self._result)
+					#self._result.append(datapoint)
 				elif datapoint["taskType"] == 'watch_events':
 					if (self._curEvent != datapoint):
 						self._curEvent = datapoint
@@ -353,14 +354,9 @@ class ModbusDevice:
 		result.append({"RegisterStatus": datapoint["value"]})
 		return result
 
-	async def monitor_event(self, taskList):
-		while(True):
-			await asyncio.sleep(self._requestCycle)
-			if len(taskList) > 0:
-				for i in range(0, len(taskList)):
-					if taskList[i]["taskType"] == "watch_events":
-						await asyncio.ensure_future(self.read_registers(taskList[i], i), loop=self._conn.loop)
-						await asyncio.sleep(self._requestCycle)
-			if len(self._event) > 0:
-				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": self._event}
-				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send, self._event), self._evetLoopMainThread)
+	def add_or_replace(self, data, theList):
+		dataname = data["name"]
+		for x in range(len(theList)):
+			if theList[x]["name"] == dataname:
+				theList.pop(x)
+		theList.append(data)
