@@ -349,7 +349,7 @@ class ModbusDevice:
 		result = []
 		for eventCode, eventValue in event1.items():
 			if (datapoint["value"] & eventValue) > 0:
-				result.append({"event": eventCode, "eventID": event1Desc[eventCode]["Id"], "Type": event1Desc[eventCode]["Type"], "timeStamp": str(datetime.datetime.utcnow()), "taskType":datapoint["taskType"]})
+				result.append({"event": eventCode, "eventID": event1Desc[eventCode]["Id"], "Type": event1Desc[eventCode]["Type"], "timeStamp": str(datetime.datetime.utcnow())})
 		result.append({"RegisterStatus": datapoint["value"]})
 		return result
 
