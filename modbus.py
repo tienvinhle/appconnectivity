@@ -149,7 +149,7 @@ class ModbusDevice:
 						#check if the result is not empty
 						if r:
 							self._event= self._event + r
-							data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": {"activeEvents":self._event}}
+							data2Send = {"thingID": self._thingID, "datapoint": "reportEvent", "dataValue": {"activeEvents":self._event, "Register": 1, "RegisterStatus": datapoint["value"]}}
 							asyncio.run_coroutine_threadsafe(self.send_queue(data2Send, self._event), self._evetLoopMainThread)
 			#for datapoint in datapointList:
 			#	asyncio.run_coroutine_threadsafe(self.send_queue(datapoint), self._evetLoopMainThread)
@@ -351,7 +351,7 @@ class ModbusDevice:
 		for eventCode, eventValue in event1.items():
 			if (datapoint["value"] & eventValue) > 0:
 				result.append({"event": eventCode, "eventID": event1Desc[eventCode]["Id"], "Type": event1Desc[eventCode]["Type"], "timeStamp": str(datetime.datetime.utcnow())})
-		result.append({"Register": 1, "RegisterStatus": datapoint["value"]})
+		#result.append({"Register": 1, "RegisterStatus": datapoint["value"]})
 		return result
 
 	def add_or_replace(self, data, theList):
