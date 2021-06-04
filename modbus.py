@@ -9,6 +9,7 @@ from pymodbus.constants import Endian
 import json
 from collections import OrderedDict
 import datetime
+from datetime import timezone
 
 defaultOrder = Endian.Little
 
@@ -185,7 +186,7 @@ class ModbusDevice:
 				#	events.append(rec)
 			#check if the array is not empty then prepare content and send to Q
 			if regs:
-				content = {"data": regs, "timeStamp": str(datetime.datetime.utcnow())}
+				content = {"data": regs, "timeStamp": str(datetime.datetime.now(tz=timezone.utc).replace(tzinfo=None))}
 				data2Send = {"thingID": self._thingID, "datapoint": "reportData", "dataValue": content}
 				asyncio.run_coroutine_threadsafe(self.send_queue(data2Send, self._result), self._evetLoopMainThread)
 			#if events:
@@ -350,7 +351,7 @@ class ModbusDevice:
 		result = []
 		for eventCode, eventValue in event1.items():
 			if (datapoint["value"] & eventValue) > 0:
-				result.append({"event": eventCode, "eventID": event1Desc[eventCode]["Id"], "Type": event1Desc[eventCode]["Type"], "timeStamp": str(datetime.datetime.utcnow())})
+				result.append({"event": eventCode, "eventID": event1Desc[eventCode]["Id"], "Type": event1Desc[eventCode]["Type"], "timeStamp": str(datetime.datetime.now(tz=timezone.utc).replace(tzinfo=None))})
 		#result.append({"Register": 1, "RegisterStatus": datapoint["value"]})
 		return result
 
